@@ -57,15 +57,15 @@ int main()
     PID pid;
     
     
-    double Kp = 2;
-    double Kd = 4;
+    double Kp = 0.2;
+    double Kd = 8;
     double Ki = 0.0001;
     
     pid.Init(Kp, Kd, Ki);
     
     
     std::vector<double> dp;
-    dp.assign(3,0.1);
+    dp.assign(3,0.01);
     
     double val[] = {Kp,Kd,Ki};
     std::vector<double> p (val, val + sizeof(val) / sizeof(double)) ;
@@ -74,12 +74,11 @@ int main()
     
     double best_err ;
     bool reset = false;
-    int i = 0;
     bool twidle = false;
     int pos = 0;
-    double sum_dp =0 ;
+
     
-    h.onMessage([&pid,&i,&dp,&p,&best_err,&reset,&twidle,&pos,&sum_dp](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+    h.onMessage([&pid,twidle,&best_err,&p,&dp,&pos,&reset](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
         // "42" at the start of the message means there's a websocket message event.
         // The 4 signifies a websocket message
         // The 2 signifies a websocket event
@@ -95,14 +94,12 @@ int main()
                     double speed = std::stod(j[1]["speed"].get<std::string>());
                     double angle = std::stod(j[1]["steering_angle"].get<std::string>());
                     double steer_value;
-
-                    if  (i == 0){
-                        best_err = pid.squared_err;
-                    }
                     
+                    // DEBUG
                     pid.UpdateError(cte);
-                    steer_value =  pid.TotalError();
-                    /*if (twidle){
+                    steer_value = pid.TotalError();
+                    
+                    if (twidle){
                         p[pos] += dp[pos];
                         pid.Init(p[0],p[1],p[2]);
                         cout<<"p_pos"<<pos<<" "<< p[pos]<<endl;
@@ -113,9 +110,8 @@ int main()
                         if (pid.squared_err < best_err){
                             best_err = pid.squared_err;
                             dp[pos] *= 1.1;
-                            if  (pos < 1){
+                            if  (pos < 2){
                                 pos = pos + 1;
-                                i = 0;
                             }else{
                                 pos = 0 ;
                                 cout <<"reset to 0"<<endl;
@@ -124,11 +120,10 @@ int main()
                             if (reset){
                                 reset = false;
                                 cout<<"compensate"<<endl;
-                                p[pos] += 2*dp[pos];
+                                p[pos] += dp[pos];
                                 dp[pos] *= 0.9;
-                                if  (pos < 1){
+                                if  (pos < 2){
                                     pos = pos + 1;
-                                    i = 0;
                                 }else{
                                     pos = 0;
                                     cout <<"reset to 0"<<endl;
@@ -139,67 +134,32 @@ int main()
                                 reset = true;
                             }
                         }
-                        // cout<<"dp "<<dp[0]<<" "<<dp[1]<<" "<<dp[2]<<endl;
+
                         
-                        double prev_sum = sum_dp;
-                        sum_dp = pid.Kp +pid.Kp+pid.Ki;
-                        
-                        /*
-                        if(fabs(prev_sum-sum_dp)<0.000000001){
-                            i = 0;
-                            reset_simulator(ws);
-                            pos = 0;
-                            dp.assign(3,0.1);
-                        }
-                        
-                        
-                         if ((i > 500) && (sum_dp < 0.2) && twidle){
-                         reset_simulator(ws);
-                         pos = 0 ;
-                         
-                         }
-                         if (sum_dp >5){
-                         twidle = false;
-                         
-                         }
-                        
-                        //cout<<"fasb"<<fabs(cte)<<endl;
-                        //cout<<"twiddle"<<twidle<<endl;
-                       
                         if ( fabs(cte)>2.2 ) {
                             reset_simulator(ws);
                             pos = 0;
                             dp.assign(3,0.1);
                         }
-                       
                     }
-                    */
- 
                     
-                    //steer_value = std::max(std::min(-1.5, steer_value), 1.5);
-                    
-
-                    
-                    double targetSpeed = fabs(0.1 *(1.-steer_value) + 0.10);
                     
                     std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
-                    
+                    double throttle = 0.4*(1-fabs(cte))+0.6;
                     json msgJson;
                     msgJson["steering_angle"] = steer_value;
-                    msgJson["throttle"] = 0.2;
-                    //msgJson["throttle"] = targetSpeed;
+                    msgJson["throttle"] = throttle;
                     auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-                    //std::cout << msg << std::endl;
+                    std::cout << msg << std::endl;
                     ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
                 }
+            } else {
+                // Manual driving
+                std::string msg = "42[\"manual\",{}]";
+                ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
             }
         }
-        
-        
     });
-    
-    
-    
     
     
     
