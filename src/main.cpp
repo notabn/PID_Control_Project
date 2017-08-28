@@ -44,10 +44,6 @@ void reset_simulator(uWS::WebSocket<uWS::SERVER>& ws){
     ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 }
 
-bool twidle_Kp = false;
-bool twidle_Ki=false;
-bool twidle_Kd= false;
-
 
 
 int main()
@@ -56,6 +52,10 @@ int main()
     
     PID pid;
     
+    // PID parameters
+    /* I first tried to search for the PID parameters with the hier present adaptation of SDG (twidle=true), but it turned out to be very tedious and also the squared error was false due to the fact that the steps calculating it varied each new simulation.
+     I ended up varing the parameters manually. First I set the P parameter to get enought gain for the steering for the car to take the curves. Then, in order to damp oscillations I added the D term. Finally to improve the steady track error I added the I term. In this case we could have ignored the I term since there is no systematic error, or  is it?
+     */
     
     double Kp = 0.2;
     double Kd = 8;
@@ -76,7 +76,7 @@ int main()
     bool reset = false;
     bool twidle = false;
     int pos = 0;
-
+    
     
     h.onMessage([&pid,twidle,&best_err,&p,&dp,&pos,&reset](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
         // "42" at the start of the message means there's a websocket message event.
@@ -134,7 +134,7 @@ int main()
                                 reset = true;
                             }
                         }
-
+                        
                         
                         if ( fabs(cte)>2.2 ) {
                             reset_simulator(ws);
@@ -145,6 +145,8 @@ int main()
                     
                     
                     std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+                    
+                    // set throttle w.r.t cte, brake when not able to take the curve
                     double throttle = 0.4*(1-fabs(cte))+0.6;
                     json msgJson;
                     msgJson["steering_angle"] = steer_value;
