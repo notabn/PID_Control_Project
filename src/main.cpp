@@ -53,10 +53,7 @@ int main()
     PID pid;
     
     // PID parameters
-    /* I first tried to search for the PID parameters with the hier present adaptation of SDG (twidle=true), but it turned out to be very tedious and also the squared error was false due to the fact that the steps calculating it varied each new simulation.
-     I ended up varing the parameters manually. First I set the P parameter to get enought gain for the steering for the car to take the curves. Then, in order to damp oscillations I added the D term. Finally to improve the steady track error I added the I term. In this case we could have ignored the I term since there is no systematic error, or  is it?
-     */
-    
+
     double Kp = 0.2;
     double Kd = 8;
     double Ki = 0.0001;
